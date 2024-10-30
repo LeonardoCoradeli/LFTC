@@ -36,6 +36,7 @@ function FiniteAutomaton() {
     if (drawingEdge && drawingEdge.from !== nodeId) {
       const symbol = prompt('Enter transition symbol:');
       if (symbol) {
+        console.log('Creating edge:', drawingEdge.from, nodeId, symbol);
         const newEdge: Edge = {
           id: `${drawingEdge.from}-${nodeId}-${symbol}`,
           from: drawingEdge.from,
@@ -54,8 +55,17 @@ function FiniteAutomaton() {
     }
   }, [drawingEdge]);
 
+  const handleNodeDragMove = useCallback((nodeId: string, position: Position) => {
+    setNodes(prevNodes =>
+      prevNodes.map(node =>
+        node.id === nodeId ? { ...node, position } : node
+      )
+    );
+  }, []);
+
   const handleTestString = useCallback(() => {
     const result = processString(testString, nodes, edges);
+    console.log('Test result:', result);  // Para depuração
     setCurrentPath(result.path);
     setIsAccepted(result.accepted);
   }, [testString, nodes, edges]);
@@ -85,7 +95,7 @@ function FiniteAutomaton() {
       />
       
       <div className="border rounded-lg overflow-hidden" style={{ height: '600px' }}>
-        <Stage width={800} height={600}>
+        <Stage width={800} height={600} onDblClick={()=>handleAddNode}>
           <Layer>
             <AutomatonCanvas
               nodes={nodes}
@@ -98,6 +108,7 @@ function FiniteAutomaton() {
               onEdgeStart={handleEdgeStart}
               onEdgeEnd={handleEdgeEnd}
               onMouseMove={handleMouseMove}
+              onNodeDragMove={handleNodeDragMove} // Nova prop
             />
           </Layer>
         </Stage>

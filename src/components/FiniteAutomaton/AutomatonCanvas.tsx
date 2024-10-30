@@ -13,6 +13,7 @@ interface AutomatonCanvasProps {
   onEdgeStart: (nodeId: string) => void;
   onEdgeEnd: (nodeId: string) => void;
   onMouseMove: (position: Position) => void;
+  onNodeDragMove: (nodeId: string, position: Position) => void; // Nova prop
 }
 
 const NODE_RADIUS = 30;
@@ -27,7 +28,8 @@ function AutomatonCanvas({
   onNodeSelect,
   onEdgeStart,
   onEdgeEnd,
-  onMouseMove
+  onMouseMove,
+  onNodeDragMove // Nova prop recebida
 }: AutomatonCanvasProps) {
   const handleStageClick = (e: any) => {
     if (e.target === e.target.getStage()) {
@@ -38,7 +40,7 @@ function AutomatonCanvas({
 
   const handleNodeDragMove = (e: any, nodeId: string) => {
     const pos = e.target.position();
-    onMouseMove({ x: pos.x, y: pos.y });
+    onNodeDragMove(nodeId, { x: pos.x, y: pos.y }); // Chame o prop em vez de usar setNodes diretamente
   };
 
   return (
@@ -49,8 +51,8 @@ function AutomatonCanvas({
         const toNode = nodes.find(n => n.id === edge.to);
         if (!fromNode || !toNode) return null;
 
-        const isActive = currentPath.includes(edge.from) && 
-                        currentPath[currentPath.indexOf(edge.from) + 1] === edge.to;
+        const isActive = currentPath.includes(edge.from) &&
+                         currentPath[currentPath.indexOf(edge.from) + 1] === edge.to;
 
         return (
           <React.Fragment key={edge.id}>
@@ -99,14 +101,11 @@ function AutomatonCanvas({
           <React.Fragment key={node.id}>
             {/* Start State Indicator */}
             {node.isStart && (
-              <Arrow
-                points={[
-                  node.position.x - NODE_RADIUS * 2,
-                  node.position.y,
-                  node.position.x - NODE_RADIUS,
-                  node.position.y
-                ]}
-                stroke="#666"
+              <Text
+                x={node.position.x - 50}
+                y={node.position.y - 20}
+                text="Start"
+                fontSize={16}
                 fill="#666"
               />
             )}
