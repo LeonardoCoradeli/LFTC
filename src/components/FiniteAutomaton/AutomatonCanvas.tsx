@@ -17,6 +17,7 @@ interface AutomatonCanvasProps {
   connectionStart?: string | null;
   isSettingStart?: boolean;
   isSettingAccept?: boolean;
+  onNodeDragMove: (nodeId: string, position: Position) => void;
 }
 
 const NODE_RADIUS = 30;
@@ -34,6 +35,7 @@ function AutomatonCanvas({
   onEdgeStart,
   onEdgeEnd,
   onMouseMove,
+  onNodeDragMove,
   isConnectionMode = false,
   connectionStart = null,
   isSettingStart = false,
@@ -47,8 +49,8 @@ function AutomatonCanvas({
   };
 
   const handleNodeDragMove = (e: any, nodeId: string) => {
-    const pos = e.target.position();
-    onMouseMove({ x: pos.x, y: pos.y });
+    const newPos = { x: e.target.x(), y: e.target.y() };
+    onNodeDragMove(nodeId, newPos); // Call the external function passed as a prop
   };
 
   const calculateArrowPoints = (fromNode: Node, toNode: Node, existingEdges: Edge[]): number[] => {

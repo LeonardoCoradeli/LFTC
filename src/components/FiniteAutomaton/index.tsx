@@ -92,6 +92,14 @@ function FiniteAutomaton() {
     }
   }, [drawingEdge]);
 
+  const handleNodeDragMove = (nodeId: string, newPos: Position) => {
+    setNodes(prevNodes =>
+      prevNodes.map(node =>
+        node.id === nodeId ? { ...node, position: newPos } : node
+      )
+    );
+  };
+
   const handleTestString = useCallback(() => {
     const result = processString(testString, nodes, edges);
     setCurrentPath(result.path);
@@ -150,6 +158,7 @@ function FiniteAutomaton() {
         onToggleStartMode={toggleStartMode}
         isSettingAccept={isSettingAccept}
         onToggleAcceptMode={toggleAcceptMode}
+        onNodeSelect={handleNodeSelect}
       />
       
       <div className="border rounded-lg overflow-hidden" style={{ height: '600px' }}>
@@ -187,6 +196,7 @@ function FiniteAutomaton() {
               connectionStart={connectionStart}
               isSettingStart={isSettingStart}
               isSettingAccept={isSettingAccept}
+              onNodeDragMove={handleNodeDragMove}
             />
           </Layer>
         </Stage>
