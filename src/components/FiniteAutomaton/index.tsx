@@ -17,6 +17,9 @@ function FiniteAutomaton() {
   const [connectionStart, setConnectionStart] = useState<string | null>(null);
   const [isSettingStart, setIsSettingStart] = useState(false);
   const [isSettingAccept, setIsSettingAccept] = useState(false);
+  const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+
 
   const handleAddNode = useCallback((position: Position) => {
     if (!isConnectionMode && !isSettingStart && !isSettingAccept) {
@@ -62,7 +65,7 @@ function FiniteAutomaton() {
     } else {
       setSelectedNode(nodeId);
     }
-  }, [isConnectionMode, connectionStart, edges, nodes, isSettingStart, isSettingAccept]);
+  }, [isConnectionMode, connectionStart, edges, nodes, isSettingStart, isSettingAccept, isDeleteMode]);
 
   const handleEdgeStart = useCallback((nodeId: string) => {
     if (!isConnectionMode && !isSettingStart && !isSettingAccept) {
@@ -92,6 +95,11 @@ function FiniteAutomaton() {
     }
   }, [drawingEdge]);
 
+  const handleEdgeSelect = useCallback((edge: Edge) => {
+    setSelectedEdge(edge);
+  }, [isDeleteMode]);
+  
+
   const handleNodeDragMove = (nodeId: string, newPos: Position) => {
     setNodes(prevNodes =>
       prevNodes.map(node =>
@@ -99,6 +107,21 @@ function FiniteAutomaton() {
       )
     );
   };
+
+  const handleDelete = useCallback(() => {
+    if (selectedNode) {
+      // Delete node and its associated edges
+      setNodes(prevNodes => prevNodes.filter(node => node.id !== selectedNode));
+      setEdges(prevEdges => prevEdges.filter(edge => edge.from !== selectedNode && edge.to !== selectedNode));
+      setSelectedNode(null);
+    } else if (selectedEdge) {
+      // Delete selected edge
+      setEdges(prevEdges => prevEdges.filter(edge => edge.id !== selectedEdge.id));
+      setSelectedEdge(null);
+    }
+  }, [selectedNode, selectedEdge]);
+  
+  
 
   const handleTestString = useCallback(() => {
     const result = processString(testString, nodes, edges);
@@ -142,6 +165,15 @@ function FiniteAutomaton() {
     setIsSettingStart(false);
   };
 
+  const toggleDeleteMode = () => {
+    if (isDeleteMode && (selectedNode || selectedEdge)) {
+      handleDelete();
+    }
+    setIsDeleteMode(!isDeleteMode);
+    setSelectedNode(null);
+    setSelectedEdge(null);
+  };
+
   return (
     <div className="space-y-6">
       <AutomatonControls
@@ -158,7 +190,10 @@ function FiniteAutomaton() {
         onToggleStartMode={toggleStartMode}
         isSettingAccept={isSettingAccept}
         onToggleAcceptMode={toggleAcceptMode}
-        onNodeSelect={handleNodeSelect}
+        onDelete={handleDelete} // Existing prop
+        selectedEdge={selectedEdge}
+        isDeleteMode={isDeleteMode} // New prop
+        toggleDeleteMode={toggleDeleteMode} // New prop
       />
       
       <div className="border rounded-lg overflow-hidden" style={{ height: '600px' }}>
@@ -197,6 +232,7 @@ function FiniteAutomaton() {
               isSettingStart={isSettingStart}
               isSettingAccept={isSettingAccept}
               onNodeDragMove={handleNodeDragMove}
+              onEdgeSelect={handleEdgeSelect}
             />
           </Layer>
         </Stage>

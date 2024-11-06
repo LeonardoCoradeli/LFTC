@@ -18,6 +18,7 @@ interface AutomatonCanvasProps {
   isSettingStart?: boolean;
   isSettingAccept?: boolean;
   onNodeDragMove: (nodeId: string, position: Position) => void;
+  onEdgeSelect: (edge: Edge) => void
 }
 
 const NODE_RADIUS = 30;
@@ -36,6 +37,7 @@ function AutomatonCanvas({
   onEdgeEnd,
   onMouseMove,
   onNodeDragMove,
+  onEdgeSelect,
   isConnectionMode = false,
   connectionStart = null,
   isSettingStart = false,
@@ -124,7 +126,7 @@ function AutomatonCanvas({
         const labelPos = calculateLabelPosition(points);
 
         return (
-          <Group key={edge.id}>
+          <Group key={edge.id} onClick={() => onEdgeSelect(edge)}>
             <Arrow
               points={points}
               stroke={isActive ? "#4F46E5" : "#666"}
@@ -145,6 +147,7 @@ function AutomatonCanvas({
           </Group>
         );
       })}
+
 
       {/* Drawing Edge */}
       {drawingEdge && drawingEdge.to && (
