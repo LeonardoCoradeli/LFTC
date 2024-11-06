@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-function RegexAnalyzer() {
+const RegexAnalyzer: React.FC = () => {
   const [regex, setRegex] = useState('');
   const [string1, setString1] = useState('');
   const [string2, setString2] = useState('');
@@ -104,6 +104,6 @@ function RegexAnalyzer() {
       </div>
     </div>
   );
-}
+};
 
 export default RegexAnalyzer;

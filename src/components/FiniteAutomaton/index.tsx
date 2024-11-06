@@ -13,30 +13,67 @@ function FiniteAutomaton() {
   const [testString, setTestString] = useState('');
   const [currentPath, setCurrentPath] = useState<string[]>([]);
   const [isAccepted, setIsAccepted] = useState<boolean | null>(null);
+  const [isConnectionMode, setIsConnectionMode] = useState(false);
+  const [connectionStart, setConnectionStart] = useState<string | null>(null);
+  const [isSettingStart, setIsSettingStart] = useState(false);
+  const [isSettingAccept, setIsSettingAccept] = useState(false);
 
   const handleAddNode = useCallback((position: Position) => {
-    const newNode: Node = {
-      id: `q${nodes.length}`,
-      position,
-      isStart: nodes.length === 0,
-      isAccept: false
-    };
-    setNodes([...nodes, newNode]);
-  }, [nodes]);
+    if (!isConnectionMode && !isSettingStart && !isSettingAccept) {
+      const newNode: Node = {
+        id: `q${nodes.length}`,
+        position,
+        isStart: nodes.length === 0,
+        isAccept: false
+      };
+      setNodes([...nodes, newNode]);
+    }
+  }, [nodes, isConnectionMode, isSettingStart, isSettingAccept]);
 
   const handleNodeSelect = useCallback((nodeId: string) => {
-    setSelectedNode(nodeId);
-  }, []);
+    if (isConnectionMode) {
+      if (!connectionStart) {
+        setConnectionStart(nodeId);
+      } else {
+        const symbol = prompt('Enter transition symbol:');
+        if (symbol) {
+          const newEdge: Edge = {
+            id: `${connectionStart}-${nodeId}-${symbol}`,
+            from: connectionStart,
+            to: nodeId,
+            symbol
+          };
+          setEdges([...edges, newEdge]);
+        }
+        setConnectionStart(null);
+        setIsConnectionMode(false);
+      }
+    } else if (isSettingStart) {
+      setNodes(nodes.map(node => ({
+        ...node,
+        isStart: node.id === nodeId
+      })));
+      setIsSettingStart(false);
+    } else if (isSettingAccept) {
+      setNodes(nodes.map(node => ({
+        ...node,
+        isAccept: node.id === nodeId ? !node.isAccept : node.isAccept
+      })));
+    } else {
+      setSelectedNode(nodeId);
+    }
+  }, [isConnectionMode, connectionStart, edges, nodes, isSettingStart, isSettingAccept]);
 
   const handleEdgeStart = useCallback((nodeId: string) => {
-    setDrawingEdge({ from: nodeId, to: null });
-  }, []);
+    if (!isConnectionMode && !isSettingStart && !isSettingAccept) {
+      setDrawingEdge({ from: nodeId, to: null });
+    }
+  }, [isConnectionMode, isSettingStart, isSettingAccept]);
 
   const handleEdgeEnd = useCallback((nodeId: string) => {
     if (drawingEdge && drawingEdge.from !== nodeId) {
       const symbol = prompt('Enter transition symbol:');
       if (symbol) {
-        console.log('Creating edge:', drawingEdge.from, nodeId, symbol);
         const newEdge: Edge = {
           id: `${drawingEdge.from}-${nodeId}-${symbol}`,
           from: drawingEdge.from,
@@ -55,17 +92,8 @@ function FiniteAutomaton() {
     }
   }, [drawingEdge]);
 
-  const handleNodeDragMove = useCallback((nodeId: string, position: Position) => {
-    setNodes(prevNodes =>
-      prevNodes.map(node =>
-        node.id === nodeId ? { ...node, position } : node
-      )
-    );
-  }, []);
-
   const handleTestString = useCallback(() => {
     const result = processString(testString, nodes, edges);
-    console.log('Test result:', result);  // Para depuração
     setCurrentPath(result.path);
     setIsAccepted(result.accepted);
   }, [testString, nodes, edges]);
@@ -82,6 +110,30 @@ function FiniteAutomaton() {
     }));
   }, [nodes]);
 
+  const toggleConnectionMode = () => {
+    setIsConnectionMode(!isConnectionMode);
+    setConnectionStart(null);
+    setSelectedNode(null);
+    setIsSettingStart(false);
+    setIsSettingAccept(false);
+  };
+
+  const toggleStartMode = () => {
+    setIsSettingStart(!isSettingStart);
+    setIsConnectionMode(false);
+    setConnectionStart(null);
+    setSelectedNode(null);
+    setIsSettingAccept(false);
+  };
+
+  const toggleAcceptMode = () => {
+    setIsSettingAccept(!isSettingAccept);
+    setIsConnectionMode(false);
+    setConnectionStart(null);
+    setSelectedNode(null);
+    setIsSettingStart(false);
+  };
+
   return (
     <div className="space-y-6">
       <AutomatonControls
@@ -92,10 +144,33 @@ function FiniteAutomaton() {
         selectedNode={selectedNode}
         nodes={nodes}
         onToggleProperty={toggleNodeProperty}
+        isConnectionMode={isConnectionMode}
+        onToggleConnectionMode={toggleConnectionMode}
+        isSettingStart={isSettingStart}
+        onToggleStartMode={toggleStartMode}
+        isSettingAccept={isSettingAccept}
+        onToggleAcceptMode={toggleAcceptMode}
       />
       
       <div className="border rounded-lg overflow-hidden" style={{ height: '600px' }}>
-        <Stage width={800} height={600} onDblClick={()=>handleAddNode}>
+        <Stage
+          width={800}
+          height={600}
+          onDblClick={(e) => {
+            const stage = e.target.getStage();
+            const position = stage?.getPointerPosition();
+            if (position) {
+              handleAddNode(position);
+            }
+          }}
+          onMouseMove={(e) => {
+            const stage = e.target.getStage();
+            const position = stage?.getPointerPosition();
+            if (position && drawingEdge) {
+              handleMouseMove(position);
+            }
+          }}
+        >
           <Layer>
             <AutomatonCanvas
               nodes={nodes}
@@ -108,7 +183,10 @@ function FiniteAutomaton() {
               onEdgeStart={handleEdgeStart}
               onEdgeEnd={handleEdgeEnd}
               onMouseMove={handleMouseMove}
-              onNodeDragMove={handleNodeDragMove} // Nova prop
+              isConnectionMode={isConnectionMode}
+              connectionStart={connectionStart}
+              isSettingStart={isSettingStart}
+              isSettingAccept={isSettingAccept}
             />
           </Layer>
         </Stage>
@@ -118,10 +196,10 @@ function FiniteAutomaton() {
         <h3 className="text-sm font-medium text-gray-700 mb-2">How to Use:</h3>
         <ul className="text-sm text-gray-600 space-y-1">
           <li>• Double-click on the canvas to create a new state</li>
-          <li>• Drag from one state to another to create a transition</li>
-          <li>• Click a state to select it and modify its properties</li>
+          <li>• Use the "Create Connection" button to connect states</li>
+          <li>• Use "Set Start" to designate the initial state</li>
+          <li>• Use "Set Accept" to mark accepting states</li>
           <li>• Enter a test string and click "Test" to simulate the automaton</li>
-          <li>• The first state created is automatically set as the start state</li>
         </ul>
       </div>
     </div>

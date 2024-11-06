@@ -1,5 +1,5 @@
 import React from 'react';
-import { Node } from './types';
+import { Link2, Play, CheckCircle2 } from 'lucide-react';
 
 interface AutomatonControlsProps {
   testString: string;
@@ -9,6 +9,12 @@ interface AutomatonControlsProps {
   selectedNode: string | null;
   nodes: Node[];
   onToggleProperty: (nodeId: string, property: 'isStart' | 'isAccept') => void;
+  isConnectionMode: boolean;
+  onToggleConnectionMode: () => void;
+  isSettingStart: boolean;
+  onToggleStartMode: () => void;
+  isSettingAccept: boolean;
+  onToggleAcceptMode: () => void;
 }
 
 function AutomatonControls({
@@ -18,7 +24,13 @@ function AutomatonControls({
   isAccepted,
   selectedNode,
   nodes,
-  onToggleProperty
+  onToggleProperty,
+  isConnectionMode,
+  onToggleConnectionMode,
+  isSettingStart,
+  onToggleStartMode,
+  isSettingAccept,
+  onToggleAcceptMode
 }: AutomatonControlsProps) {
   const selectedNodeData = nodes.find(node => node.id === selectedNode);
 
@@ -46,36 +58,55 @@ function AutomatonControls({
           </div>
         </div>
 
-        {selectedNode && (
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Selected State: {selectedNode}
-            </label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => onToggleProperty(selectedNode, 'isStart')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  selectedNodeData?.isStart
-                    ? 'bg-green-600 text-white hover:bg-green-700'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Start State
-              </button>
-              <button
-                onClick={() => onToggleProperty(selectedNode, 'isAccept')}
-                className={`px-4 py-2 rounded-lg transition-colors ${
-                  selectedNodeData?.isAccept
-                    ? 'bg-green-600 text-white hover:bg-green-700'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Accept State
-              </button>
-            </div>
-          </div>
-        )}
+        <div className="flex-1 flex items-end gap-2">
+          <button
+            onClick={onToggleConnectionMode}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              isConnectionMode
+                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+            disabled={isSettingStart || isSettingAccept}
+          >
+            <Link2 className="w-4 h-4" />
+            {isConnectionMode ? 'Cancel Connection' : 'Create Connection'}
+          </button>
+
+          <button
+            onClick={onToggleStartMode}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              isSettingStart
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+            disabled={isConnectionMode || isSettingAccept}
+          >
+            <Play className="w-4 h-4" />
+            {isSettingStart ? 'Cancel Start' : 'Set Start'}
+          </button>
+
+          <button
+            onClick={onToggleAcceptMode}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              isSettingAccept
+                ? 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+            disabled={isConnectionMode || isSettingStart}
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            {isSettingAccept ? 'Cancel Accept' : 'Set Accept'}
+          </button>
+        </div>
       </div>
+
+      {(isConnectionMode || isSettingStart || isSettingAccept) && (
+        <div className="p-4 bg-indigo-50 text-indigo-700 rounded-lg">
+          {isConnectionMode && 'Click on a state to start the connection, then click on another state to create a transition'}
+          {isSettingStart && 'Click on a state to set it as the start state'}
+          {isSettingAccept && 'Click on a state to toggle it as an accept state'}
+        </div>
+      )}
 
       {isAccepted !== null && (
         <div

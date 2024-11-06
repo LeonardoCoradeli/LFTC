@@ -4,7 +4,7 @@ import RegexAnalyzer from './components/RegexAnalyzer';
 import GrammarValidator from './components/GrammarValidator';
 import FiniteAutomaton from './components/FiniteAutomaton';
 
-function App() {
+const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
 
   const tabs = [
@@ -51,6 +51,6 @@ function App() {
       </div>
     </div>
   );
-}
+};
 
 export default App;
