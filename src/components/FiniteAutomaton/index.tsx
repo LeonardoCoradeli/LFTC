@@ -8,7 +8,7 @@ import { processString } from './automaton-utils';
 function FiniteAutomaton() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
-  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
   const [drawingEdge, setDrawingEdge] = useState<{ from: string; to: Position | null } | null>(null);
   const [testString, setTestString] = useState('');
   const [currentPath, setCurrentPath] = useState<string[]>([]);
@@ -19,7 +19,6 @@ function FiniteAutomaton() {
   const [isSettingAccept, setIsSettingAccept] = useState(false);
   const [selectedEdge, setSelectedEdge] = useState<Edge | null>(null);
   const [isDeleteMode, setIsDeleteMode] = useState(false);
-
 
   const handleAddNode = useCallback((position: Position) => {
     if (!isConnectionMode && !isSettingStart && !isSettingAccept) {
@@ -33,7 +32,8 @@ function FiniteAutomaton() {
     }
   }, [nodes, isConnectionMode, isSettingStart, isSettingAccept]);
 
-  const handleNodeSelect = useCallback((nodeId: string) => {
+  const handleNodeSelect = useCallback((nodeId: string, event?: MouseEvent) => {
+    // Handle connection mode logic
     if (isConnectionMode) {
       if (!connectionStart) {
         setConnectionStart(nodeId);
@@ -63,9 +63,19 @@ function FiniteAutomaton() {
         isAccept: node.id === nodeId ? !node.isAccept : node.isAccept
       })));
     } else {
-      setSelectedNode(nodeId);
+      // Handle multiple selection with Ctrl/Cmd key
+      if (event?.ctrlKey || event?.metaKey) {
+        setSelectedNodes(prevSelectedNodes =>
+          prevSelectedNodes.includes(nodeId)
+            ? prevSelectedNodes.filter(id => id !== nodeId) // Deselect if already selected
+            : [...prevSelectedNodes, nodeId] // Add to selection if not already selected
+        );
+      } else {
+        // Single selection if Ctrl is not pressed
+        setSelectedNodes([nodeId]);
+      }
     }
-  }, [isConnectionMode, connectionStart, edges, nodes, isSettingStart, isSettingAccept, isDeleteMode]);
+  }, [isConnectionMode, connectionStart, edges, nodes, isSettingStart, isSettingAccept]);
 
   const handleEdgeStart = useCallback((nodeId: string) => {
     if (!isConnectionMode && !isSettingStart && !isSettingAccept) {
@@ -77,17 +87,38 @@ function FiniteAutomaton() {
     if (drawingEdge && drawingEdge.from !== nodeId) {
       const symbol = prompt('Enter transition symbol:');
       if (symbol) {
-        const newEdge: Edge = {
-          id: `${drawingEdge.from}-${nodeId}-${symbol}`,
-          from: drawingEdge.from,
-          to: nodeId,
-          symbol
-        };
-        setEdges([...edges, newEdge]);
+        setEdges(prevEdges => {
+          const existingEdge = prevEdges.find(
+            edge => edge.from === drawingEdge.from && edge.to === nodeId
+          );
+  
+          if (existingEdge) {
+            // Update the existing edge's symbols by adding the new symbol if it doesn't exist
+            const symbols = new Set(existingEdge.symbol.split(', '));
+            symbols.add(symbol);
+            return prevEdges.map(edge =>
+              edge === existingEdge
+                ? { ...edge, symbol: Array.from(symbols).join(', ') }
+                : edge
+            );
+          }
+  
+          // Create a new edge if no existing edge is found
+          return [
+            ...prevEdges,
+            {
+              id: `${drawingEdge.from}-${nodeId}-${symbol}`,
+              from: drawingEdge.from,
+              to: nodeId,
+              symbol
+            }
+          ];
+        });
       }
     }
     setDrawingEdge(null);
-  }, [drawingEdge, edges]);
+  }, [drawingEdge]);
+  
 
   const handleMouseMove = useCallback((position: Position) => {
     if (drawingEdge) {
@@ -97,8 +128,7 @@ function FiniteAutomaton() {
 
   const handleEdgeSelect = useCallback((edge: Edge) => {
     setSelectedEdge(edge);
-  }, [isDeleteMode]);
-  
+  }, []);
 
   const handleNodeDragMove = (nodeId: string, newPos: Position) => {
     setNodes(prevNodes =>
@@ -109,19 +139,17 @@ function FiniteAutomaton() {
   };
 
   const handleDelete = useCallback(() => {
-    if (selectedNode) {
-      // Delete node and its associated edges
-      setNodes(prevNodes => prevNodes.filter(node => node.id !== selectedNode));
-      setEdges(prevEdges => prevEdges.filter(edge => edge.from !== selectedNode && edge.to !== selectedNode));
-      setSelectedNode(null);
+    if (selectedNodes.length > 0) {
+      // Delete selected nodes and their associated edges
+      setNodes(prevNodes => prevNodes.filter(node => !selectedNodes.includes(node.id)));
+      setEdges(prevEdges => prevEdges.filter(edge => !selectedNodes.includes(edge.from) && !selectedNodes.includes(edge.to)));
+      setSelectedNodes([]);
     } else if (selectedEdge) {
       // Delete selected edge
       setEdges(prevEdges => prevEdges.filter(edge => edge.id !== selectedEdge.id));
       setSelectedEdge(null);
     }
-  }, [selectedNode, selectedEdge]);
-  
-  
+  }, [selectedNodes, selectedEdge]);
 
   const handleTestString = useCallback(() => {
     const result = processString(testString, nodes, edges);
@@ -144,7 +172,7 @@ function FiniteAutomaton() {
   const toggleConnectionMode = () => {
     setIsConnectionMode(!isConnectionMode);
     setConnectionStart(null);
-    setSelectedNode(null);
+    setSelectedNodes([]);
     setIsSettingStart(false);
     setIsSettingAccept(false);
   };
@@ -153,7 +181,7 @@ function FiniteAutomaton() {
     setIsSettingStart(!isSettingStart);
     setIsConnectionMode(false);
     setConnectionStart(null);
-    setSelectedNode(null);
+    setSelectedNodes([]);
     setIsSettingAccept(false);
   };
 
@@ -161,18 +189,24 @@ function FiniteAutomaton() {
     setIsSettingAccept(!isSettingAccept);
     setIsConnectionMode(false);
     setConnectionStart(null);
-    setSelectedNode(null);
+    setSelectedNodes([]);
     setIsSettingStart(false);
   };
 
   const toggleDeleteMode = () => {
-    if (isDeleteMode && (selectedNode || selectedEdge)) {
+    if (isDeleteMode && (selectedNodes.length > 0 || selectedEdge)) {
       handleDelete();
     }
     setIsDeleteMode(!isDeleteMode);
-    setSelectedNode(null);
+    setSelectedNodes([]);
     setSelectedEdge(null);
   };
+
+  const clearSelection = () => {
+    setSelectedNodes([]);
+    setSelectedEdge(null);
+  };
+  
 
   return (
     <div className="space-y-6">
@@ -181,7 +215,7 @@ function FiniteAutomaton() {
         setTestString={setTestString}
         onTest={handleTestString}
         isAccepted={isAccepted}
-        selectedNode={selectedNode}
+        selectedNodes={selectedNodes} // Updated prop
         nodes={nodes}
         onToggleProperty={toggleNodeProperty}
         isConnectionMode={isConnectionMode}
@@ -197,29 +231,29 @@ function FiniteAutomaton() {
       />
       
       <div className="border rounded-lg overflow-hidden" style={{ height: '600px' }}>
-        <Stage
-          width={800}
-          height={600}
-          onDblClick={(e) => {
-            const stage = e.target.getStage();
-            const position = stage?.getPointerPosition();
-            if (position) {
-              handleAddNode(position);
-            }
-          }}
-          onMouseMove={(e) => {
-            const stage = e.target.getStage();
-            const position = stage?.getPointerPosition();
-            if (position && drawingEdge) {
-              handleMouseMove(position);
-            }
-          }}
-        >
+      <Stage
+        width={800}
+        height={600}
+        onDblClick={(e) => {
+          const stage = e.target.getStage();
+          const position = stage?.getPointerPosition();
+          if (position) {
+            handleAddNode(position);
+          }
+        }}
+        onMouseMove={(e) => {
+          const stage = e.target.getStage();
+          const position = stage?.getPointerPosition();
+          if (position && drawingEdge) {
+            handleMouseMove(position);
+          }
+        }}
+      >
           <Layer>
             <AutomatonCanvas
               nodes={nodes}
               edges={edges}
-              selectedNode={selectedNode}
+              selectedNodes={selectedNodes} // Updated prop
               drawingEdge={drawingEdge}
               currentPath={currentPath}
               onNodeAdd={handleAddNode}
@@ -233,6 +267,7 @@ function FiniteAutomaton() {
               isSettingAccept={isSettingAccept}
               onNodeDragMove={handleNodeDragMove}
               onEdgeSelect={handleEdgeSelect}
+              clearSelection={clearSelection} // New prop
             />
           </Layer>
         </Stage>

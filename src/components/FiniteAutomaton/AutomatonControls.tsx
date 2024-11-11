@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link2, Play, CheckCircle2 } from 'lucide-react';
 import { Edge } from './types';
 
@@ -27,21 +26,15 @@ function AutomatonControls({
   setTestString,
   onTest,
   isAccepted,
-  selectedNode,
-  nodes,
-  onToggleProperty,
   isConnectionMode,
   onToggleConnectionMode,
   isSettingStart,
   onToggleStartMode,
   isSettingAccept,
   onToggleAcceptMode,
-  onDelete,
-  selectedEdge,
   isDeleteMode, // New prop
   toggleDeleteMode // New prop
 }: AutomatonControlsProps) {
-  const selectedNodeData = nodes.find(node => node.id === selectedNode);
 
   return (
     <div className="space-y-4">

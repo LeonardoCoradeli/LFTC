@@ -5,11 +5,11 @@ import { Node, Edge, Position } from './types';
 interface AutomatonCanvasProps {
   nodes: Node[];
   edges: Edge[];
-  selectedNode: string | null;
+  selectedNodes: string[]; // Updated to handle multiple selections
   drawingEdge: { from: string; to: Position | null } | null;
   currentPath: string[];
   onNodeAdd: (position: Position) => void;
-  onNodeSelect: (nodeId: string) => void;
+  onNodeSelect: (nodeId: string, event: MouseEvent) => void; // Pass event to detect Ctrl
   onEdgeStart: (nodeId: string) => void;
   onEdgeEnd: (nodeId: string) => void;
   onMouseMove: (position: Position) => void;
@@ -18,7 +18,8 @@ interface AutomatonCanvasProps {
   isSettingStart?: boolean;
   isSettingAccept?: boolean;
   onNodeDragMove: (nodeId: string, position: Position) => void;
-  onEdgeSelect: (edge: Edge) => void
+  onEdgeSelect: (edge: Edge) => void;
+  clearSelection: () => void; // Function to clear selection
 }
 
 const NODE_RADIUS = 30;
@@ -28,7 +29,7 @@ const CURVE_OFFSET = 50;
 function AutomatonCanvas({
   nodes,
   edges,
-  selectedNode,
+  selectedNodes,
   drawingEdge,
   currentPath,
   onNodeAdd,
@@ -41,7 +42,8 @@ function AutomatonCanvas({
   isConnectionMode = false,
   connectionStart = null,
   isSettingStart = false,
-  isSettingAccept = false
+  isSettingAccept = false,
+  clearSelection
 }: AutomatonCanvasProps) {
   const handleStageDoubleClick = (e: any) => {
     if (e.target === e.target.getStage()) {
@@ -50,13 +52,19 @@ function AutomatonCanvas({
     }
   };
 
+  const handleBackgroundClick = (e: any) => {
+    if (e.target === e.target.getStage()) {
+      clearSelection(); // Clear selection when clicking on the background
+    }
+  };
+
   const handleNodeDragMove = (e: any, nodeId: string) => {
     const newPos = { x: e.target.x(), y: e.target.y() };
-    onNodeDragMove(nodeId, newPos); // Call the external function passed as a prop
+    onNodeDragMove(nodeId, newPos);
   };
 
   const calculateArrowPoints = (fromNode: Node, toNode: Node, existingEdges: Edge[]): number[] => {
-    // Self-loop
+    // Self-loop calculation
     if (fromNode.id === toNode.id) {
       const { x, y } = fromNode.position;
       return [
@@ -68,7 +76,7 @@ function AutomatonCanvas({
       ];
     }
 
-    // Count existing edges between these nodes
+    // Calculate curve for edges between different nodes
     const edgeCount = existingEdges.filter(e => 
       (e.from === fromNode.id && e.to === toNode.id) ||
       (e.from === toNode.id && e.to === fromNode.id)
@@ -77,17 +85,13 @@ function AutomatonCanvas({
     const dx = toNode.position.x - fromNode.position.x;
     const dy = toNode.position.y - fromNode.position.y;
     const angle = Math.atan2(dy, dx);
-
-    // Calculate curve offset based on number of existing edges
     const curveOffset = CURVE_OFFSET * (edgeCount % 2 === 0 ? 1 : -1) * ((edgeCount + 1) / 2);
 
-    // Calculate control point
     const midX = (fromNode.position.x + toNode.position.x) / 2;
     const midY = (fromNode.position.y + toNode.position.y) / 2;
     const controlX = midX - curveOffset * Math.sin(angle);
     const controlY = midY + curveOffset * Math.cos(angle);
 
-    // Calculate start and end points considering node radius
     const startX = fromNode.position.x + NODE_RADIUS * Math.cos(angle);
     const startY = fromNode.position.y + NODE_RADIUS * Math.sin(angle);
     const endX = toNode.position.x - NODE_RADIUS * Math.cos(angle);
@@ -97,22 +101,20 @@ function AutomatonCanvas({
   };
 
   const calculateLabelPosition = (points: number[]): { x: number; y: number } => {
-    if (points.length === 10) { // Self-loop
-      return {
-        x: points[4] + 10,
-        y: points[5] - 20
-      };
+    if (points.length === 10) {
+      return { x: points[4] + 10, y: points[5] - 20 };
     }
-    
     const midIndex = Math.floor(points.length / 2) - 1;
-    return {
-      x: points[midIndex],
-      y: points[midIndex + 1] - 20
-    };
+    return { x: points[midIndex], y: points[midIndex + 1] - 20 };
+  };
+
+  const handleRightClick = (e: any) => {
+    e.evt.preventDefault(); // Prevent the context menu from appearing
+    clearSelection(); // Clear selected nodes and edges
   };
 
   return (
-    <Group onDblClick={handleStageDoubleClick}>
+    <Group onDblClick={handleStageDoubleClick} onClick={handleBackgroundClick} onContextMenu={handleRightClick}>
       {/* Edges */}
       {edges.map((edge) => {
         const fromNode = nodes.find(n => n.id === edge.from);
@@ -139,7 +141,7 @@ function AutomatonCanvas({
             <Text
               x={labelPos.x}
               y={labelPos.y}
-              text={edge.symbol}
+              text={edge.symbol} // Display combined symbols
               fontSize={16}
               fill={isActive ? "#4F46E5" : "#666"}
               align="center"
@@ -147,7 +149,6 @@ function AutomatonCanvas({
           </Group>
         );
       })}
-
 
       {/* Drawing Edge */}
       {drawingEdge && drawingEdge.to && (
@@ -167,7 +168,7 @@ function AutomatonCanvas({
       {/* Nodes */}
       {nodes.map((node) => {
         const isActive = currentPath.includes(node.id);
-        const isSelected = selectedNode === node.id;
+        const isSelected = selectedNodes.includes(node.id);
         const isConnectionSource = connectionStart === node.id;
         const isInteractive = isConnectionMode || isSettingStart || isSettingAccept;
         
@@ -219,7 +220,10 @@ function AutomatonCanvas({
               }
               strokeWidth={isSelected || isConnectionSource ? 3 : 2}
               draggable={!isInteractive}
-              onClick={() => onNodeSelect(node.id)}
+              onClick={(e) => {
+                const evt = e.evt as MouseEvent; // Cast to native MouseEvent
+                onNodeSelect(node.id, evt);
+              }}
               onDragStart={() => onEdgeStart(node.id)}
               onDragEnd={() => onEdgeEnd(node.id)}
               onDragMove={(e) => handleNodeDragMove(e, node.id)}
